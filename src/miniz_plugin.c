@@ -6,8 +6,10 @@
  */
 
 #include "miniz_plugin.h" 
-#include "esp32/rom/miniz.h"
+//#include "esp32/rom/miniz.h"
+#include "miniz.h"
 #include "esp_err.h"
+#include "esp_log.h"
 
 /**
  *
@@ -23,7 +25,7 @@ typedef struct _zlib_TDecompress{
     signed char     window_bits;                   /**< */
 } _zlib_TDecompress;
 
-//static const char TAG[] = "hdiffz_miniz_plugin";
+static const char TAG[] = "hdiffz_miniz_plugin";
 
 /*********************
  * HELPER PROTOTYPES *
@@ -118,7 +120,7 @@ static hpatch_BOOL miniz_decompress_close(struct hpatch_TDecompress* decompressP
         self = (_zlib_TDecompress*)decompressHandle;
         if ( !self ) return result;
 
-        if ( 0 != self->dec_buf! ) close_check(MZ_OK == inflateEnd(&self->d_stream));
+        if ( 0 != self->dec_buf ) _close_check(MZ_OK == inflateEnd(&self->d_stream));
 
         memset(self,0,sizeof(_zlib_TDecompress));
 
@@ -187,7 +189,7 @@ static const hpatch_TDecompress _minizDecompressPlugin = {
     .close = miniz_decompress_close,
     .decompress_part = miniz_decompress_part,
 };
-const hpatch_TDecompress minizDecompressPlugin = &_minizDecompressPlugin;
+const hpatch_TDecompress *minizDecompressPlugin = &_minizDecompressPlugin;
 
 
 /***********
@@ -202,11 +204,13 @@ const hpatch_TDecompress minizDecompressPlugin = &_minizDecompressPlugin;
 static hpatch_BOOL _zlib_reset_for_next_node(_zlib_TDecompress* self){
     //backup
     Bytef*   next_out_back      = self->d_stream.next_out;
-    Bytef*   next_in_back       = self->d_stream.next_in;
+    Bytef*   next_in_back       = (Bytef*)self->d_stream.next_in;
     unsigned int avail_out_back = self->d_stream.avail_out;
     unsigned int avail_in_back  = self->d_stream.avail_in;
     //reset
-    if (MZ_OK != inflateReset(&self->d_stream)) return hpatch_FALSE;
+    if (Z_OK!=inflateEnd(&self->d_stream)) return hpatch_FALSE;
+    if (Z_OK!=inflateInit2(&self->d_stream,self->window_bits)) return hpatch_FALSE;
+    //if (MZ_OK != inflateReset(&self->d_stream)) return hpatch_FALSE;
     //restore
     self->d_stream.next_out  = next_out_back;
     self->d_stream.next_in   = next_in_back;

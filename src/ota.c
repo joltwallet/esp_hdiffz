@@ -53,16 +53,16 @@ esp_err_t esp_hdiffz_patch_ota(const char *diff, size_t diff_size) {
     hpatch_TStreamInput  old_stream = { 0 };
     hpatch_TStreamInput  diff_stream;
 
-    old_stream.streamImport = running_partition;
+    old_stream.streamImport = (void*)running_partition;
     old_stream.streamSize = running_partition->size;
     old_stream.read = partition_read;
 
-    out_stream.streamImport = update_partition;
+    out_stream.streamImport = (void*)update_partition;
     out_stream.streamSize = update_partition->size;
     out_stream.read_writed = partition_read;
     out_stream.write = partition_write;
 
-    mem_as_hStreamInput(&diffStream, diff, diff + diff_size);
+    mem_as_hStreamInput(&diff_stream, (const unsigned char *)diff, (const unsigned char *)&diff[diff_size]);
 
     if(!patch_decompress(&out_stream, &old_stream, &diff_stream, minizDecompressPlugin)){
         ESP_LOGE(TAG, "Failed to run patch_decompress");
