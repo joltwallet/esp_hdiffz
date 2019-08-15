@@ -1,0 +1,3 @@
+[submodule "src/HDiffPatch"]
+	path = HDiffPatch
+	url = https://github.com/sisong/HDiffPatch.git
