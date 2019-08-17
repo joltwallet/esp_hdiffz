@@ -11,6 +11,7 @@
 #include "sdkconfig.h"
 
 #include "HPatch/patch.h"
+#include "HPatch/patch_types.h"
 
 #include "miniz_plugin.h"
 

@@ -34,6 +34,13 @@ In your project's `component/` folder, clone this repo (or add as a submodule).
 git clone --recursive https://github.com/joltwallet/esp_hdiffz.git
 ```
 
+This project relies on `esp_full_miniz` for the higher level compression/decompression 
+interface. Clone this isn't your `component/` directory as well:
+
+```
+git clone https://github.com/joltwallet/esp_full_miniz.git
+```
+
 # TODO
 
 * Example Code

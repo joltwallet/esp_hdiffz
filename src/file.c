@@ -1,3 +1,5 @@
+#define LOG_LOCAL_LEVEL 4
+
 #include "esp_log.h"
 #include "esp_hdiffz.h"
 
@@ -21,6 +23,8 @@ static hpatch_BOOL file_write(const struct hpatch_TStreamOutput* stream,
         const unsigned char* data,
         const unsigned char* data_end);
 
+static size_t get_file_size(FILE *f);
+
 /********************
  * PUBLIC FUNCTIONS *
  ********************/
@@ -33,12 +37,12 @@ esp_err_t esp_hdiffz_patch_file(FILE *in, FILE *out, const char *diff, size_t di
     hpatch_TStreamInput  diff_stream;
 
     old_stream.streamImport = in;
-    old_stream.streamSize = 0; // TODO: get actual size of input file?
+    old_stream.streamSize = get_file_size(in); // TODO: maybe cache this.
     old_stream.read = file_read;
 
     out_stream.streamImport = out;
-    out_stream.streamSize = 0; // TODO: get remaining disc size?
-    out_stream.read_writed = file_read;
+    out_stream.streamSize = 7; // TODO: this needs to be exactly the size of the out data. Get this from info?
+    //out_stream.read_writed = file_read;
     out_stream.write = file_write;
 
     mem_as_hStreamInput(&diff_stream, (const unsigned char *)diff, (const unsigned char *)&diff[diff_size]);
@@ -66,8 +70,8 @@ static hpatch_BOOL file_read(const struct hpatch_TStreamInput* stream,
         hpatch_StreamPos_t readFromPos,
         unsigned char* out_data,
         unsigned char* out_data_end) {
-    esp_err_t err;
     int n_bytes = out_data_end - out_data;
+    ESP_LOGD(TAG, "Reading %d bytes from file.", n_bytes);
 
     FILE *file = (FILE*)stream->streamImport;
 
@@ -86,8 +90,8 @@ static hpatch_BOOL file_write(const struct hpatch_TStreamOutput* stream,
         hpatch_StreamPos_t writeToPos,
         const unsigned char* data,
         const unsigned char* data_end) {
-    esp_err_t err;
     int n_bytes = data_end - data;
+    ESP_LOGD(TAG, "Writing %d bytes to file. \"%.*s\"", n_bytes, n_bytes, data);
 
     FILE *file = (FILE*)stream->streamImport;
 
@@ -96,3 +100,12 @@ static hpatch_BOOL file_write(const struct hpatch_TStreamOutput* stream,
     return hpatch_TRUE;
 }
 
+static size_t get_file_size(FILE *f) {
+    size_t size;
+    long int pos;
+    pos = ftell(f);
+    fseek(f, 0, SEEK_END);
+    size = ftell(f);
+    fseek(f, 0, pos);
+    return size;
+}

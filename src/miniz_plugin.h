@@ -6,6 +6,6 @@
 /**
  * @brief Plugin Object
  */
-extern const hpatch_TDecompress *minizDecompressPlugin;
+extern hpatch_TDecompress *minizDecompressPlugin;
 
 #endif

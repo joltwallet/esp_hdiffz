@@ -5,8 +5,9 @@
  * Based off of the zlib plugin in HDiffPatch/decompress_plugin_demo.h
  */
 
+#define LOG_LOCAL_LEVEL 4
+
 #include "miniz_plugin.h" 
-//#include "esp32/rom/miniz.h"
 #include "miniz.h"
 #include "esp_err.h"
 #include "esp_log.h"
@@ -63,27 +64,34 @@ static hpatch_decompressHandle miniz_decompress_open( struct hpatch_TDecompress*
             hpatch_StreamPos_t code_begin,
             hpatch_StreamPos_t code_end) {
 
+    ESP_LOGD(TAG, "miniz_decompress_open");
+
     _zlib_TDecompress* self = NULL;
     signed char window_bits;
     int decompress_buf_size;
     unsigned char *_mem_buf = NULL;
     size_t _mem_buf_size = 0;
 
-    if (code_end-code_begin<1) goto exit;
+    if (code_end-code_begin<1) {
+        ESP_LOGE(TAG, "Provided data has length less than 1.");
+        goto exit;
+    }
 
     /* Get the number of windowBits */
-    {
-        if (!codeStream->read(codeStream,code_begin,(unsigned char*)&window_bits,
-                              (unsigned char*)&window_bits+1)) return 0;
-        decompress_buf_size = 1 << window_bits;
-        ++code_begin;
-        assert(window_bits >= 8);
-    }
+    if (!codeStream->read(codeStream,code_begin,(unsigned char*)&window_bits,
+                          (unsigned char*)&window_bits+1)) return 0;
+    decompress_buf_size = 1 << window_bits;
+    ++code_begin;
+    assert(window_bits >= 8);
+    ESP_LOGD(TAG, "WindowBits %d detected.", window_bits);
 
     /* Allocate space for the decompress object and the decompress buffer */
     _mem_buf_size = sizeof(_zlib_TDecompress) + decompress_buf_size;
     _mem_buf = malloc(_mem_buf_size);
-    if (!_mem_buf) goto exit;
+    if (!_mem_buf) {
+        ESP_LOGE(TAG, "OOM");
+        goto exit;
+    }
 
     self = (_zlib_TDecompress*)_hpatch_align_upper( _mem_buf, sizeof(hpatch_StreamPos_t) );
     memset(self, 0, sizeof(_zlib_TDecompress));
@@ -95,7 +103,10 @@ static hpatch_decompressHandle miniz_decompress_open( struct hpatch_TDecompress*
     self->window_bits  = window_bits;
     
     /* Init the inflater */
-    if( MZ_OK != inflateInit2(&self->d_stream, self->window_bits) ) goto exit;
+    if( MZ_OK != inflateInit2(&self->d_stream, self->window_bits) ) {
+        ESP_LOGE(TAG, "Failed in init inflate object.");
+        goto exit;
+    }
 
     return self;
 
@@ -114,18 +125,19 @@ exit:
 static hpatch_BOOL miniz_decompress_close(struct hpatch_TDecompress* decompressPlugin,
         hpatch_decompressHandle decompressHandle) {
 
-        _zlib_TDecompress* self;
-        hpatch_BOOL result = hpatch_TRUE;
+    ESP_LOGD(TAG, "miniz_decompress_close");
+    _zlib_TDecompress* self;
+    hpatch_BOOL result = hpatch_TRUE;
 
-        self = (_zlib_TDecompress*)decompressHandle;
-        if ( !self ) return result;
+    self = (_zlib_TDecompress*)decompressHandle;
+    if ( !self ) return result;
 
-        if ( 0 != self->dec_buf ) _close_check(MZ_OK == inflateEnd(&self->d_stream));
+    if ( 0 != self->dec_buf ) _close_check(MZ_OK == inflateEnd(&self->d_stream));
 
-        memset(self,0,sizeof(_zlib_TDecompress));
+    memset(self,0,sizeof(_zlib_TDecompress));
 
-        if (self) free(self);
-        return result;
+    if (self) free(self);
+    return result;
 }
 
 /**
@@ -139,6 +151,7 @@ static hpatch_BOOL miniz_decompress_part(hpatch_decompressHandle decompressHandl
         unsigned char* out_part_data, 
         unsigned char* out_part_data_end) {
 
+    ESP_LOGD(TAG, "miniz_decompress_part");
     _zlib_TDecompress* self;
     self = (_zlib_TDecompress*)decompressHandle;
 
@@ -148,6 +161,7 @@ static hpatch_BOOL miniz_decompress_part(hpatch_decompressHandle decompressHandl
     self->d_stream.avail_out = (uInt)(out_part_data_end-out_part_data);
 
     while (self->d_stream.avail_out>0) {
+        ESP_LOGD(TAG, "Running avail_out %d", self->d_stream.avail_out);
         uInt avail_out_back,avail_in_back;
         int ret;
         hpatch_StreamPos_t codeLen=(self->code_end - self->code_begin);
@@ -166,30 +180,37 @@ static hpatch_BOOL miniz_decompress_part(hpatch_decompressHandle decompressHandl
         avail_in_back=self->d_stream.avail_in;
         ret=inflate(&self->d_stream,Z_PARTIAL_FLUSH);
         if (ret==MZ_OK){
-            if ((self->d_stream.avail_in==avail_in_back)&&(self->d_stream.avail_out==avail_out_back))
-                return hpatch_FALSE;//error;
+            if ((self->d_stream.avail_in==avail_in_back)&&(self->d_stream.avail_out==avail_out_back)) {
+                ESP_LOGE(TAG, "No available in/out data");
+                return hpatch_FALSE;
+            }
         }else if (ret==Z_STREAM_END){
             if (self->d_stream.avail_in+codeLen>0){ //next compress node!
-                if (!_zlib_reset_for_next_node(self))
-                    return hpatch_FALSE;//error;
+                if (!_zlib_reset_for_next_node(self)){
+                    ESP_LOGE(TAG, "Node complete");
+                    return hpatch_FALSE;
+                }
             }else{//all end
-                if (self->d_stream.avail_out!=0)
-                    return hpatch_FALSE;//error;
+                if (self->d_stream.avail_out!=0){
+                    ESP_LOGE(TAG, "Stream complete");
+                    return hpatch_FALSE;
+                }
             }
         }else{
-            return hpatch_FALSE;//error;
+            ESP_LOGE(TAG, "Unknown Error");
+            return hpatch_FALSE;
         }
     }
     return hpatch_TRUE;
 }
 
-static const hpatch_TDecompress _minizDecompressPlugin = {
+static hpatch_TDecompress _minizDecompressPlugin = {
     .is_can_open = miniz_is_can_open,
     .open = miniz_decompress_open,
     .close = miniz_decompress_close,
     .decompress_part = miniz_decompress_part,
 };
-const hpatch_TDecompress *minizDecompressPlugin = &_minizDecompressPlugin;
+hpatch_TDecompress *minizDecompressPlugin = &_minizDecompressPlugin;
 
 
 /***********
