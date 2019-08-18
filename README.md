@@ -19,12 +19,18 @@ on the ESP32. This functionality may be added later if desired and compute
 resources are feasible.
 
 # Why use it?
+
 A firmware update for the ESP32 is typically a few megabytes. However, the new 
 firmware typically is very similar to the old firmware, so its wasteful to 
 send the complete firmware over. The difference between the 2 firmwares might 
 be on the order of 10's or 100's of kilobytes. This diff data is also compressed
 to reduce the size even further. The result is a firmware update that might be
 more than 20x faster than naively sending over the complete binary.
+
+Including this component will typically add about 8988 bytes to your firmware's
+binary.
+
+TODO: report above number when in release mode.
 
 # Installation
 
@@ -77,8 +83,29 @@ hdiffz -c-zlib old_firmware.bin new_firmware.bin firmware_update_patch.bin
 
 # Unit Tests
 
-Flash the `unit-test-app` with this component as a target via (assuming you are in this directory):
+Set up a folder with the projects as follows:
 
 ```
-make -C ${IDF_PATH}/tools/unit-test-app EXTRA_COMPONENT_DIRS=${PWD} TEST_COMPONENTS=esp_hdiffz flash monitor
+components/
+├── esp_hdiffz/
+│   ├── component.mk
+│   ├── HDiffPatch/
+│   ├── include/
+│   ├── src/
+│   └── test/
+└── esp_full_miniz
+    ├── component.mk
+    ├── include/
+    └── src/
+```
+
+Using `make menuconfig` under `${IDF_PATH}/tools/unit-test-app`, modify the following parameters:
+
+* Partition Table -> Custom partition CSV file -> "partition_table_unit_test_two_ota.csv"
+
+Flash the `unit-test-app` with this component as a target via:
+Finally, run the `flash-unit-test.sh` script.
+
+```
+make -C ${IDF_PATH}/tools/unit-test-app EXTRA_COMPONENT_DIRS=${COMPONENTS} TEST_COMPONENTS=esp_hdiffz flash monitor
 ```

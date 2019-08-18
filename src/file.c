@@ -29,7 +29,7 @@ static size_t get_file_size(FILE *f);
  * PUBLIC FUNCTIONS *
  ********************/
 
-esp_err_t esp_hdiffz_patch_file(FILE *in, FILE *out, const char *diff, size_t diff_size) {
+esp_err_t esp_hdiffz_patch_file_from_mem(FILE *in, FILE *out, const char *diff, size_t diff_size) {
     esp_err_t err = ESP_FAIL;
 
     hpatch_TStreamOutput out_stream = { 0 };
@@ -37,12 +37,11 @@ esp_err_t esp_hdiffz_patch_file(FILE *in, FILE *out, const char *diff, size_t di
     hpatch_TStreamInput  diff_stream;
 
     old_stream.streamImport = in;
-    old_stream.streamSize = get_file_size(in); // TODO: maybe cache this.
+    old_stream.streamSize = get_file_size(in);
     old_stream.read = file_read;
 
     out_stream.streamImport = out;
-    out_stream.streamSize = 7; // TODO: this needs to be exactly the size of the out data. Get this from info?
-    //out_stream.read_writed = file_read;
+    out_stream.streamSize = UINT32_MAX;
     out_stream.write = file_write;
 
     mem_as_hStreamInput(&diff_stream, (const unsigned char *)diff, (const unsigned char *)&diff[diff_size]);

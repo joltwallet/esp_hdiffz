@@ -9,6 +9,7 @@
 #include "esp_err.h"
 #include <string.h>
 #include "sdkconfig.h"
+#include "esp_partition.h"
 
 #include "HPatch/patch.h"
 #include "HPatch/patch_types.h"
@@ -24,19 +25,49 @@ extern "C" {
  * * All diff streams must be zlib compressed.
  */
 
+/*********
+ * FILES *
+ *********/
 
 /**
- * @param Create the patched file.
+ * @param Create the patched file using a diff from memory.
  *
  * Not performed inplace incase of failure during transmission.
  *
  * @param[in] in Opened file containing old data.
  * @param[out] out Opened file to write patched data to.
- * @param[in] diff stream
- * @param[in] diff_size number of bytes in current diff chunk.
+ * @param[in] diff Full diff array.
+ * @param[in] diff_size number of bytes in diff.
  * @return ESP_OK on success.
  */
-esp_err_t esp_hdiffz_patch_file(FILE *in, FILE *out, const char *diff, size_t diff_size);
+esp_err_t esp_hdiffz_patch_file_from_mem(FILE *in, FILE *out, const char *diff, size_t diff_size);
+
+/*******
+ * OTA *
+ *******/
+
+typedef struct esp_hdiffz_ota_handle_t esp_hdiffz_ota_handle_t;
+
+/**
+ * @brief esp_hdiffz_ota_begin, but with more explicit parameters.
+ * @param[in] src partition to be apply patch from
+ * @param[in] dst partition to save the patched firmware
+ * @param[in] image_size Resulting patched firmware size; set to OTA_SIZE_UNKNOWN if not known.
+ * @param[out] out_handle
+ * @return ESP_OK on success.
+ */
+esp_err_t esp_hdiffz_ota_begin_adv(const esp_partition_t *src, const esp_partition_t *dst, size_t image_size, esp_hdiffz_ota_handle_t **out_handle);
+
+/**
+ * @brief Begins an hdiffpatch firmware upgrade.
+ *
+ * Assumes that the diff is applied to the currently running firmware.
+ * Patched firmware will be flashed to the next free OTA partition.
+ *
+ * @param[out] out_handle
+ * @return ESP_OK on success.
+ */
+esp_err_t esp_hdiffz_ota_begin(esp_hdiffz_ota_handle_t **out_handle);
 
 /**
  * @brief Performs OTA using currently running partition as old data.
@@ -54,13 +85,13 @@ esp_err_t esp_hdiffz_patch_file(FILE *in, FILE *out, const char *diff, size_t di
  * @param[in] diff_size number of bytes in current diff chunk.
  * @return ESP_OK on success.
  */
-esp_err_t esp_hdiffz_patch_ota(const char *diff, size_t diff_size);
+esp_err_t esp_hdiffz_ota_write(esp_hdiffz_ota_handle_t *handle, const void *data, size_t size);
 
 /**
  * @brief Close and finalize the OTA
  * @return ESP_OK on success.
  */
-esp_err_t esp_hdiffz_patch_ota_close();
+esp_err_t esp_hdiffz_ota_end(esp_hdiffz_ota_handle_t *handle);
 
 #ifdef __cplusplus
 } // extern "C"

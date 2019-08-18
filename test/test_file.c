@@ -3,7 +3,6 @@
 #include "unity.h"
 
 #include "esp_spiffs.h"
-#include "esp_partition.h"
 
 static const char* spiffs_test_partition_label = "flash_test";
 
@@ -63,7 +62,7 @@ TEST_CASE("Small file apply patch", "[hdiffz]")
 
     f_old = fopen(fn_old, "rb");
     f_new = fopen(fn_new, "wb");
-    TEST_ESP_OK(esp_hdiffz_patch_file(f_old, f_new, diff, sizeof(diff)));
+    TEST_ESP_OK(esp_hdiffz_patch_file_from_mem(f_old, f_new, diff, sizeof(diff)));
     fclose(f_old);
     fclose(f_new);
 
