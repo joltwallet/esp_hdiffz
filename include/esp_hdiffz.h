@@ -42,9 +42,20 @@ extern "C" {
  */
 esp_err_t esp_hdiffz_patch_file_from_mem(FILE *in, FILE *out, const char *diff, size_t diff_size);
 
+esp_err_t esp_hdiffz_patch_file(FILE *in, FILE *out, FILE *diff);
+
+esp_err_t esp_hdiffz_ota_file(FILE *diff);
+
+esp_err_t esp_hdiffz_ota_file_adv(FILE *diff, const esp_partition_t *src, const esp_partition_t *dst, size_t image_size);
+
 /*******
  * OTA *
  *******/
+
+/* NOTE: OTA Streaming is currently not enabled because HDiffPatch needs 
+ * a serialization/deserialization that doesn't have random access.
+ * Technically this is possible, but it's a sizeable amount of work for now. */
+#if 0
 
 typedef struct esp_hdiffz_ota_handle_t esp_hdiffz_ota_handle_t;
 
@@ -94,6 +105,7 @@ esp_err_t esp_hdiffz_ota_write(esp_hdiffz_ota_handle_t *handle, const void *data
  * @return ESP_OK on success.
  */
 esp_err_t esp_hdiffz_ota_end(esp_hdiffz_ota_handle_t *handle);
+#endif
 
 #ifdef __cplusplus
 } // extern "C"

@@ -59,6 +59,12 @@ static void esp_hdiffz_ota_handle_del(esp_hdiffz_ota_handle_t *h);
 /*********************
  * PUBLIC FUNCTIONS  *
  *********************/
+
+esp_err_t esp_hdiffz_ota_file(FILE *diff);
+
+esp_err_t esp_hdiffz_ota_file_adv(FILE *diff, const esp_partition_t *src, const esp_partition_t *dst, size_t image_size);
+
+#if 0
 /**
  * @brief Apply 
  */
@@ -189,6 +195,7 @@ exit:
     esp_hdiffz_ota_handle_del(handle);
     return err;
 }
+#endif
 
 /*********************
  * PRIVATE FUNCTIONS *

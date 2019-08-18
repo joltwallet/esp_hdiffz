@@ -57,6 +57,35 @@ exit:
     return err;
 }
 
+esp_err_t esp_hdiffz_patch_file(FILE *in, FILE *out, FILE *diff){
+    esp_err_t err = ESP_FAIL;
+
+    hpatch_TStreamOutput out_stream = { 0 };
+    hpatch_TStreamInput  old_stream = { 0 };
+    hpatch_TStreamInput  diff_stream;
+
+    old_stream.streamImport = in;
+    old_stream.streamSize = get_file_size(in);
+    old_stream.read = file_read;
+
+    out_stream.streamImport = out;
+    out_stream.streamSize = UINT32_MAX;
+    out_stream.write = file_write;
+
+    diff_stream.streamImport = diff;
+    diff_stream.streamSize = get_file_size(diff);
+    diff_stream.read = file_read;
+
+    if(!patch_decompress(&out_stream, &old_stream, &diff_stream, minizDecompressPlugin)){
+        ESP_LOGE(TAG, "Failed to run patch_decompress");
+        goto exit;
+    }
+
+    return ESP_OK;
+
+exit:
+    return err;
+}
 /*********************
  * PRIVATE FUNCTIONS *
  *********************/
@@ -74,6 +103,7 @@ static hpatch_BOOL file_read(const struct hpatch_TStreamInput* stream,
 
     FILE *file = (FILE*)stream->streamImport;
 
+    fseek(file, readFromPos, SEEK_SET);
     if (n_bytes != fread(out_data, 1, n_bytes, file)) return hpatch_FALSE;
     return hpatch_TRUE;
 }
@@ -94,6 +124,7 @@ static hpatch_BOOL file_write(const struct hpatch_TStreamOutput* stream,
 
     FILE *file = (FILE*)stream->streamImport;
 
+    fseek(file, writeToPos, SEEK_SET);
     if (n_bytes!=fwrite(data, 1, n_bytes, file)) return hpatch_FALSE;
 
     return hpatch_TRUE;

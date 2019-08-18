@@ -85,6 +85,7 @@ static void print_partition_hash( const char *msg, const esp_partition_t *part )
     printf("\n%s%s\n", msg, hex);
 }
 
+#if 0
 /**
  * Proxy for testing OTA update.
  *
@@ -95,7 +96,7 @@ static void print_partition_hash( const char *msg, const esp_partition_t *part )
  *     ota_1 - partition to flash the patched firmware.
  *     ota_2 - what the patched firmware should be.
  */
-TEST_CASE("ota", "[hdiffz]")
+TEST_CASE("ota_streaming", "[hdiffz]")
 {
     {
         const esp_partition_t *src = esp_ota_get_running_partition();
@@ -133,3 +134,4 @@ TEST_CASE("ota", "[hdiffz]")
     TEST_ASSERT_EQUAL_HEX8_ARRAY(ota_2_sha256, ota_1_sha256, 32);
     print_partition_hash("ota_1: ", ota_1);
 }
+#endif
