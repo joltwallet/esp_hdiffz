@@ -118,16 +118,18 @@ TEST_CASE("ota", "[hdiffz]")
     TEST_ASSERT_NOT_NULL(ota_2);
 
     TEST_ESP_OK(esp_partition_get_sha256(ota_0, ota_0_sha256));
-    //TEST_ESP_OK(esp_partition_get_sha256(ota_1, ota_1_sha256));
     TEST_ESP_OK(esp_partition_get_sha256(ota_2, ota_2_sha256));
 
     print_partition_hash("ota_0: ", ota_0);
-    //print_partition_hash("ota_1: ", ota_1);
     print_partition_hash("ota_2: ", ota_2);
 
 
-#if 0
-    esp_err_t err;
-    err = esp_hdiffz_ota_begin_adv(const esp_partition_t *src, const esp_partition_t *dst, size_t image_size, esp_hdiffz_ota_handle_t **out_handle);
-#endif
+    esp_hdiffz_ota_handle_t *ota_handle;
+    TEST_ESP_OK(esp_hdiffz_ota_begin_adv(ota_0, ota_1, OTA_SIZE_UNKNOWN,  &ota_handle));
+    TEST_ESP_OK(esp_hdiffz_ota_write(ota_handle, hello_world_diff, sizeof(hello_world_diff)));
+    TEST_ESP_OK(esp_hdiffz_ota_end(ota_handle));
+
+    TEST_ESP_OK(esp_partition_get_sha256(ota_1, ota_1_sha256));
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(ota_2_sha256, ota_1_sha256, 32);
+    print_partition_hash("ota_1: ", ota_1);
 }

@@ -9,9 +9,10 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/ringbuf.h"
+#include "freertos/semphr.h"
 
 #define CONFIG_HDIFFZ_OTA_RINGBUF_SIZE 1028
-#define CONFIG_HDIFFZ_OTA_TASK_SIZE 4096
+#define CONFIG_HDIFFZ_OTA_TASK_SIZE 20000
 #define CONFIG_HDIFFZ_OTA_TASK_PRIORITY 5
 #define CONFIG_HDIFFZ_OTA_TASK_NAME "hdiffz_ota"
 
@@ -27,6 +28,7 @@ typedef struct esp_hdiffz_ota_handle_t{
         TaskHandle_t task;
         RingbufHandle_t ringbuf;
     } handle;
+    SemaphoreHandle_t complete;
 }esp_hdiffz_ota_handle_t;
 
 /**************
@@ -99,6 +101,12 @@ esp_err_t esp_hdiffz_ota_begin_adv(const esp_partition_t *src, const esp_partiti
     h->part.src = src;
     h->part.dst = dst;
 
+    h->complete = xSemaphoreCreateBinary();
+    if(NULL == h->complete){
+        err = ESP_ERR_NO_MEM;
+        goto exit;
+    }
+
 
     err = esp_ota_begin(h->part.dst, image_size, &h->handle.ota);
     if (err != ESP_OK) {
@@ -147,6 +155,9 @@ esp_err_t esp_hdiffz_ota_write(esp_hdiffz_ota_handle_t *handle, const void *data
 
 esp_err_t esp_hdiffz_ota_end(esp_hdiffz_ota_handle_t *handle) {
     esp_err_t err = ESP_FAIL;
+
+    // Wait until the hdiffz task is done.
+    xSemaphoreTake(handle->complete, portMAX_DELAY);
 
     /************************
      * Close the ota_handle *
@@ -304,6 +315,8 @@ static void esp_hdiffz_ota_task( void *params ){
         ESP_LOGE(TAG, "Failed to run patch_decompress");
     }
 
+    xSemaphoreGive(h->complete);
+
     h->handle.task = NULL;
     vTaskDelete(NULL);
 }
@@ -316,5 +329,6 @@ static void esp_hdiffz_ota_handle_del(esp_hdiffz_ota_handle_t *h){
     if(h->handle.task) vTaskDelete(h->handle.task);
     if(h->handle.ota) esp_ota_end(h->handle.ota);
     if(h->handle.ringbuf) vRingbufferDelete(h->handle.ringbuf);
+    if(h->complete) vSemaphoreDelete(h->complete);
     free(h);
 }
