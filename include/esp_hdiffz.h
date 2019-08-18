@@ -53,10 +53,11 @@ typedef struct esp_hdiffz_ota_handle_t esp_hdiffz_ota_handle_t;
  * @param[in] src partition to be apply patch from
  * @param[in] dst partition to save the patched firmware
  * @param[in] image_size Resulting patched firmware size; set to OTA_SIZE_UNKNOWN if not known.
+ * @param[in] diff_size Size of the complete diff stream.
  * @param[out] out_handle
  * @return ESP_OK on success.
  */
-esp_err_t esp_hdiffz_ota_begin_adv(const esp_partition_t *src, const esp_partition_t *dst, size_t image_size, esp_hdiffz_ota_handle_t **out_handle);
+esp_err_t esp_hdiffz_ota_begin_adv(const esp_partition_t *src, const esp_partition_t *dst, size_t image_size, size_t diff_size, esp_hdiffz_ota_handle_t **out_handle);
 
 /**
  * @brief Begins an hdiffpatch firmware upgrade.
@@ -64,10 +65,11 @@ esp_err_t esp_hdiffz_ota_begin_adv(const esp_partition_t *src, const esp_partiti
  * Assumes that the diff is applied to the currently running firmware.
  * Patched firmware will be flashed to the next free OTA partition.
  *
+ * @param[in] diff_size Size of the complete diff stream.
  * @param[out] out_handle
  * @return ESP_OK on success.
  */
-esp_err_t esp_hdiffz_ota_begin(esp_hdiffz_ota_handle_t **out_handle);
+esp_err_t esp_hdiffz_ota_begin(size_t diff_size, esp_hdiffz_ota_handle_t **out_handle);
 
 /**
  * @brief Performs OTA using currently running partition as old data.

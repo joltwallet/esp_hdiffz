@@ -1,4 +1,6 @@
 
+#define LOG_LOCAL_LEVEL 4
+
 #include "esp_log.h"
 #include "esp_hdiffz.h"
 
@@ -11,7 +13,8 @@
 #include "freertos/ringbuf.h"
 #include "freertos/semphr.h"
 
-#define CONFIG_HDIFFZ_OTA_RINGBUF_SIZE 1028
+#define CONFIG_HDIFFZ_OTA_RINGBUF_SIZE 2048
+#define CONFIG_HDIFFZ_OTA_RINGBUF_TIMEOUT pdMS_TO_TICKS(1000)
 #define CONFIG_HDIFFZ_OTA_TASK_SIZE 20000
 #define CONFIG_HDIFFZ_OTA_TASK_PRIORITY 5
 #define CONFIG_HDIFFZ_OTA_TASK_NAME "hdiffz_ota"
@@ -29,6 +32,7 @@ typedef struct esp_hdiffz_ota_handle_t{
         RingbufHandle_t ringbuf;
     } handle;
     SemaphoreHandle_t complete;
+    size_t diff_size;
 }esp_hdiffz_ota_handle_t;
 
 /**************
@@ -60,7 +64,7 @@ static void esp_hdiffz_ota_handle_del(esp_hdiffz_ota_handle_t *h);
  */
 //see patch_decompress_mem
 
-esp_err_t esp_hdiffz_ota_begin(esp_hdiffz_ota_handle_t **out_handle) {
+esp_err_t esp_hdiffz_ota_begin(size_t diff_size, esp_hdiffz_ota_handle_t **out_handle) {
 
     /******************
      * Get Partitions *
@@ -84,11 +88,11 @@ esp_err_t esp_hdiffz_ota_begin(esp_hdiffz_ota_handle_t **out_handle) {
         assert(dst != NULL);
     }
 
-    return esp_hdiffz_ota_begin_adv(src, dst, OTA_SIZE_UNKNOWN, out_handle);
+    return esp_hdiffz_ota_begin_adv(src, dst, OTA_SIZE_UNKNOWN, diff_size, out_handle);
 }
 
 esp_err_t esp_hdiffz_ota_begin_adv(const esp_partition_t *src, const esp_partition_t *dst,
-        size_t image_size, esp_hdiffz_ota_handle_t **out_handle) {
+        size_t image_size, size_t diff_size, esp_hdiffz_ota_handle_t **out_handle) {
     esp_err_t err = ESP_FAIL;
     esp_hdiffz_ota_handle_t *h;
 
@@ -100,13 +104,13 @@ esp_err_t esp_hdiffz_ota_begin_adv(const esp_partition_t *src, const esp_partiti
     }
     h->part.src = src;
     h->part.dst = dst;
+    h->diff_size = diff_size;
 
     h->complete = xSemaphoreCreateBinary();
     if(NULL == h->complete){
         err = ESP_ERR_NO_MEM;
         goto exit;
     }
-
 
     err = esp_ota_begin(h->part.dst, image_size, &h->handle.ota);
     if (err != ESP_OK) {
@@ -270,24 +274,29 @@ static hpatch_BOOL ringbuf_read(const struct hpatch_TStreamInput* stream,
         unsigned char* out_data,
         unsigned char* out_data_end) {
 
+
     RingbufHandle_t ringbuf = stream->streamImport;
     char *ringbuf_ptr;
     size_t n_bytes = out_data_end - out_data;
 
+    ESP_LOGD(TAG, "Attempting to receive %d bytes from %d.", n_bytes, (int)readFromPos);
+
     while(n_bytes > 0){
         size_t bytes_received = 0;
         ringbuf_ptr = xRingbufferReceiveUpTo(ringbuf, &bytes_received,
-                portMAX_DELAY, n_bytes);
+                CONFIG_HDIFFZ_OTA_RINGBUF_TIMEOUT, n_bytes);
         n_bytes -= bytes_received;
         if( 0 == bytes_received ) {
+            ESP_LOGD(TAG, "0 bytes received");
             return hpatch_FALSE;
         }
-        memcpy(ringbuf_ptr, out_data, bytes_received);
+        memcpy(out_data, ringbuf_ptr, bytes_received);
         vRingbufferReturnItem(ringbuf, ringbuf_ptr);
         out_data += bytes_received;
     }
 
     assert(out_data == out_data_end);
+    ESP_LOGD(TAG, "All bytes received");
 
     return hpatch_TRUE;
 }
@@ -308,7 +317,7 @@ static void esp_hdiffz_ota_task( void *params ){
     old_stream.read = partition_read;
 
     diff_stream.streamImport = h->handle.ringbuf;
-    diff_stream.streamSize = UINT32_MAX; // will get set by header.
+    diff_stream.streamSize = h->diff_size;
     diff_stream.read = ringbuf_read;
 
     if(!patch_decompress(&out_stream, &old_stream, &diff_stream, minizDecompressPlugin)){

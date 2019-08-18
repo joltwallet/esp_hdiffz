@@ -46,7 +46,14 @@ static hpatch_BOOL _zlib_reset_for_next_node(_zlib_TDecompress* self);
  * @return True if compressionType matches plugin.
  */
 static hpatch_BOOL miniz_is_can_open(const char* compressType) {
-    return (0==strcmp(compressType,"zlib"))||(0==strcmp(compressType,"pzlib"));
+    if ((0==strcmp(compressType,"zlib"))||(0==strcmp(compressType,"pzlib"))) {
+        ESP_LOGD(TAG, "miniz_is_can_open: TRUE");
+        return true;
+    }
+    else{
+        ESP_LOGD(TAG, "miniz_is_can_open: FALSE");
+        return false;
+    }
 }
 
 /**

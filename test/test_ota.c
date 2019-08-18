@@ -125,7 +125,7 @@ TEST_CASE("ota", "[hdiffz]")
 
 
     esp_hdiffz_ota_handle_t *ota_handle;
-    TEST_ESP_OK(esp_hdiffz_ota_begin_adv(ota_0, ota_1, OTA_SIZE_UNKNOWN,  &ota_handle));
+    TEST_ESP_OK(esp_hdiffz_ota_begin_adv(ota_0, ota_1, OTA_SIZE_UNKNOWN, sizeof(hello_world_diff), &ota_handle));
     TEST_ESP_OK(esp_hdiffz_ota_write(ota_handle, hello_world_diff, sizeof(hello_world_diff)));
     TEST_ESP_OK(esp_hdiffz_ota_end(ota_handle));
 
