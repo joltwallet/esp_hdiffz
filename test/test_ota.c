@@ -82,7 +82,7 @@ static void print_partition_hash( const char *msg, const esp_partition_t *part )
     TEST_ESP_OK(esp_partition_get_sha256(part, sha256));
     char hex[65];
     sodium_bin2hex( hex, sizeof(hex), sha256, 32 );
-    printf("%s%s", msg, hex);
+    printf("\n%s%s\n", msg, hex);
 }
 
 /**
@@ -118,11 +118,11 @@ TEST_CASE("ota", "[hdiffz]")
     TEST_ASSERT_NOT_NULL(ota_2);
 
     TEST_ESP_OK(esp_partition_get_sha256(ota_0, ota_0_sha256));
-    TEST_ESP_OK(esp_partition_get_sha256(ota_1, ota_1_sha256));
+    //TEST_ESP_OK(esp_partition_get_sha256(ota_1, ota_1_sha256));
     TEST_ESP_OK(esp_partition_get_sha256(ota_2, ota_2_sha256));
 
     print_partition_hash("ota_0: ", ota_0);
-    print_partition_hash("ota_1: ", ota_1);
+    //print_partition_hash("ota_1: ", ota_1);
     print_partition_hash("ota_2: ", ota_2);
 
 
