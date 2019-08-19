@@ -42,6 +42,17 @@ extern "C" {
  */
 esp_err_t esp_hdiffz_patch_file_from_mem(FILE *in, FILE *out, const char *diff, size_t diff_size);
 
+/**
+ * @param Create the patched file using a diff file.
+ *
+ * Not performed inplace incase of failure during transmission.
+ *
+ * @param[in] in Opened file containing old data.
+ * @param[out] out Opened file to write patched data to.
+ * @param[in] diff Full diff array.
+ * @param[in] diff_size number of bytes in diff.
+ * @return ESP_OK on success.
+ */
 esp_err_t esp_hdiffz_patch_file(FILE *in, FILE *out, FILE *diff);
 
 
@@ -63,7 +74,6 @@ esp_err_t esp_hdiffz_ota_file(FILE *diff);
  * @param[in] dst partition to save the patched firmware
  * @return ESP_OK on success.
  */
-
 esp_err_t esp_hdiffz_ota_file_adv(FILE *diff, const esp_partition_t *src, const esp_partition_t *dst);
 
 /*******
