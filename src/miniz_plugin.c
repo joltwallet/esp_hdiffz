@@ -100,7 +100,7 @@ static hpatch_decompressHandle miniz_decompress_open( struct hpatch_TDecompress*
         goto exit;
     }
 
-    self = (_zlib_TDecompress*)_hpatch_align_upper( _mem_buf, sizeof(hpatch_StreamPos_t) );
+    self = _mem_buf;
     memset(self, 0, sizeof(_zlib_TDecompress));
     self->dec_buf      = (unsigned char*)self+sizeof(_zlib_TDecompress);
     self->dec_buf_size = (_mem_buf+_mem_buf_size)-((unsigned char*)self+sizeof(_zlib_TDecompress));
@@ -110,8 +110,9 @@ static hpatch_decompressHandle miniz_decompress_open( struct hpatch_TDecompress*
     self->window_bits  = window_bits;
     
     /* Init the inflater */
-    if( MZ_OK != inflateInit2(&self->d_stream, self->window_bits) ) {
-        ESP_LOGE(TAG, "Failed in init inflate object.");
+    int res = inflateInit2(&self->d_stream, self->window_bits);
+    if(res != MZ_OK){
+        ESP_LOGE(TAG, "Failed in init inflate object (Error %d).", res);
         goto exit;
     }
 

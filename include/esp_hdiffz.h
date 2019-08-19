@@ -44,9 +44,27 @@ esp_err_t esp_hdiffz_patch_file_from_mem(FILE *in, FILE *out, const char *diff, 
 
 esp_err_t esp_hdiffz_patch_file(FILE *in, FILE *out, FILE *diff);
 
+
+/**
+ * @brief Performs an hdiffpatch firmware upgrade.
+ *
+ * Assumes that the diff is applied to the currently running firmware.
+ * Patched firmware will be flashed to the next free OTA partition.
+ *
+ * @param[in] diff hdiffpatch file to apply.
+ * @return ESP_OK on success.
+ */
 esp_err_t esp_hdiffz_ota_file(FILE *diff);
 
-esp_err_t esp_hdiffz_ota_file_adv(FILE *diff, const esp_partition_t *src, const esp_partition_t *dst, size_t image_size);
+/**
+ * @brief esp_hdiffz_ota_file, but with more explicit parameters.
+ * @param[in] diff hdiffpatch file to apply.
+ * @param[in] src partition to be apply patch from
+ * @param[in] dst partition to save the patched firmware
+ * @return ESP_OK on success.
+ */
+
+esp_err_t esp_hdiffz_ota_file_adv(FILE *diff, const esp_partition_t *src, const esp_partition_t *dst);
 
 /*******
  * OTA *

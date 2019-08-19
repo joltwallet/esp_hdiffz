@@ -3,6 +3,7 @@
 
 #include "esp_log.h"
 #include "esp_hdiffz.h"
+#include "rw.h"
 
 #include "esp_system.h"
 #include "esp_flash_partitions.h"
@@ -60,9 +61,79 @@ static void esp_hdiffz_ota_handle_del(esp_hdiffz_ota_handle_t *h);
  * PUBLIC FUNCTIONS  *
  *********************/
 
-esp_err_t esp_hdiffz_ota_file(FILE *diff);
+esp_err_t esp_hdiffz_ota_file(FILE *diff){
+    /******************
+     * Get Partitions *
+     ******************/
+    const esp_partition_t *src;
+    const esp_partition_t *dst;
+    {
+        const esp_partition_t *configured = esp_ota_get_boot_partition();
+        src = esp_ota_get_running_partition();
+        if (configured != src) {
+            ESP_LOGW(TAG, "Configured OTA boot partition at offset 0x%08x, "
+                    "but running from offset 0x%08x",
+                     configured->address, src->address);
+            ESP_LOGW(TAG, "(This can happen if either the OTA boot data or "
+                    "preferred boot image become corrupted somehow.)");
+        }
+        ESP_LOGI(TAG, "Running partition type %d subtype %d (offset 0x%08x)",
+                src->type, src->subtype, src->address);
 
-esp_err_t esp_hdiffz_ota_file_adv(FILE *diff, const esp_partition_t *src, const esp_partition_t *dst, size_t image_size);
+        dst = esp_ota_get_next_update_partition(NULL);
+        assert(dst != NULL);
+    }
+
+    return esp_hdiffz_ota_file_adv(diff, src, dst);
+}
+
+esp_err_t esp_hdiffz_ota_file_adv(FILE *diff, const esp_partition_t *src, const esp_partition_t *dst){
+    esp_err_t err = ESP_FAIL;
+
+    // Wipe destination partition
+    err = esp_partition_erase_range(dst, 0, dst->size);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to wipe dst partition");
+    }
+
+    // Perform patch
+    {
+        hpatch_TStreamOutput out_stream = { 0 };
+        hpatch_TStreamInput  old_stream = { 0 };
+        hpatch_TStreamInput  diff_stream = { 0 };
+
+        out_stream.streamImport = dst;
+        out_stream.streamSize = dst->size;
+        out_stream.write = partition_write;
+
+        old_stream.streamImport = src;
+        old_stream.streamSize = src->size;
+        old_stream.read = partition_read;
+
+        diff_stream.streamImport = diff;
+        diff_stream.streamSize = esp_hdiffz_get_file_size(diff);
+        diff_stream.read = esp_hdiffz_file_read;
+
+        if(!patch_decompress(&out_stream, &old_stream, &diff_stream, minizDecompressPlugin)){
+            ESP_LOGE(TAG, "Failed to run patch_decompress");
+            goto exit;
+        }
+    }
+
+    err = esp_ota_set_boot_partition(dst);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_ota_set_boot_partition failed (%s)!", esp_err_to_name(err));
+        goto exit;
+    }
+
+    ESP_LOGI(TAG, "OTA Complete. Please Reboot System");
+
+    return ESP_OK;
+
+exit:
+    return err;
+
+}
 
 #if 0
 /**

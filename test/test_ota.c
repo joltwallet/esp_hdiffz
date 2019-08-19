@@ -1,11 +1,12 @@
 #include "esp_hdiffz.h"
 
 #include "unity.h"
+#include "common.h"
 
 #include "sodium.h"
 #include "esp_ota_ops.h"
 
-static unsigned char hello_world_diff[] = {
+static char hello_world_diff[] = {
   0x48, 0x44, 0x49, 0x46, 0x46, 0x31, 0x33, 0x26, 0x7a, 0x6c, 0x69, 0x62,
   0x00, 0x89, 0x8d, 0x60, 0x89, 0x8d, 0x50, 0x0c, 0x35, 0x00, 0x87, 0x02,
   0x83, 0x26, 0x84, 0x7d, 0x81, 0x6d, 0x49, 0x00, 0x00, 0x00, 0xd3, 0x7b,
@@ -83,6 +84,62 @@ static void print_partition_hash( const char *msg, const esp_partition_t *part )
     char hex[65];
     sodium_bin2hex( hex, sizeof(hex), sha256, 32 );
     printf("\n%s%s\n", msg, hex);
+}
+
+/**
+ * Proxy for testing OTA update.
+ *
+ * Make sure all the data is flashed via flash-unit-test.sh
+ *
+ * The firmwares are as follows:
+ *     ota_0 - old firmware.
+ *     ota_1 - partition to flash the patched firmware.
+ *     ota_2 - what the patched firmware should be.
+ */
+TEST_CASE("ota_from_file", "[hdiffz]")
+{
+    test_fs_setup();
+
+    const esp_partition_t *running = esp_ota_get_running_partition();
+    TEST_ASSERT_NOT_NULL(running);
+    printf( "Running partition type %d subtype %d (offset 0x%08x)",
+            running->type, running->subtype, running->address);
+
+    const char fn_diff[] = "/spiffs/diff";
+    test_spiffs_create_file_with_data(fn_diff, hello_world_diff, sizeof(hello_world_diff));
+
+    const esp_partition_t *ota_0, *ota_1, *ota_2;
+    uint8_t ota_0_sha256[32], ota_1_sha256[32], ota_2_sha256[32];
+
+    ota_0 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_0, NULL);
+    TEST_ASSERT_NOT_NULL(ota_0);
+
+    ota_1 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_1, NULL);
+    TEST_ASSERT_NOT_NULL(ota_1);
+    TEST_ESP_OK(esp_partition_erase_range(ota_1, 0, ota_1->size)); // Ensure there's nothing left over in target partition
+
+    ota_2 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_2, NULL);
+    TEST_ASSERT_NOT_NULL(ota_2);
+
+    TEST_ESP_OK(esp_partition_get_sha256(ota_0, ota_0_sha256));
+    TEST_ESP_OK(esp_partition_get_sha256(ota_2, ota_2_sha256));
+
+    print_partition_hash("ota_0: ", ota_0);
+    print_partition_hash("ota_2: ", ota_2);
+
+
+    FILE *f_diff;
+    f_diff = fopen(fn_diff, "rb");
+    TEST_ESP_OK(esp_hdiffz_ota_file_adv(f_diff, ota_0, ota_1));
+    fclose(f_diff);
+
+    TEST_ESP_OK(esp_ota_set_boot_partition(running));
+
+    TEST_ESP_OK(esp_partition_get_sha256(ota_1, ota_1_sha256));
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(ota_2_sha256, ota_1_sha256, 32);
+    print_partition_hash("ota_1: ", ota_1);
+
+    test_fs_teardown();
 }
 
 #if 0

@@ -38,5 +38,6 @@ make \
     -C ${IDF_PATH}/tools/unit-test-app \
     EXTRA_COMPONENT_DIRS=${COMPONENTS_DIR} \
     TEST_COMPONENTS='esp_hdiffz' \
+    CFLAGS+=-DESP_UNIT_TEST \
     app-flash monitor
 
