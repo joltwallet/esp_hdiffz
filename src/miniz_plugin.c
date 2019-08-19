@@ -100,7 +100,7 @@ static hpatch_decompressHandle miniz_decompress_open( struct hpatch_TDecompress*
         goto exit;
     }
 
-    self = _mem_buf;
+    self = (_zlib_TDecompress *)_mem_buf;
     memset(self, 0, sizeof(_zlib_TDecompress));
     self->dec_buf      = (unsigned char*)self+sizeof(_zlib_TDecompress);
     self->dec_buf_size = (_mem_buf+_mem_buf_size)-((unsigned char*)self+sizeof(_zlib_TDecompress));

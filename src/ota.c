@@ -48,6 +48,7 @@ static hpatch_BOOL partition_write(const struct hpatch_TStreamOutput* stream,
         const unsigned char* data,
         const unsigned char* data_end);
 
+#if 0
 static hpatch_BOOL ringbuf_read(const struct hpatch_TStreamInput* stream,
         hpatch_StreamPos_t readFromPos,
         unsigned char* out_data,
@@ -56,6 +57,7 @@ static hpatch_BOOL ringbuf_read(const struct hpatch_TStreamInput* stream,
 static void esp_hdiffz_ota_task( void *params );
 
 static void esp_hdiffz_ota_handle_del(esp_hdiffz_ota_handle_t *h);
+#endif
 
 /*********************
  * PUBLIC FUNCTIONS  *
@@ -102,11 +104,11 @@ esp_err_t esp_hdiffz_ota_file_adv(FILE *diff, const esp_partition_t *src, const 
         hpatch_TStreamInput  old_stream = { 0 };
         hpatch_TStreamInput  diff_stream = { 0 };
 
-        out_stream.streamImport = dst;
+        out_stream.streamImport = (void *)dst;
         out_stream.streamSize = dst->size;
         out_stream.write = partition_write;
 
-        old_stream.streamImport = src;
+        old_stream.streamImport = (void *)src;
         old_stream.streamSize = src->size;
         old_stream.read = partition_read;
 
@@ -343,6 +345,7 @@ static hpatch_BOOL partition_write(const struct hpatch_TStreamOutput* stream,
     return hpatch_TRUE;
 }
 
+#if 0
 /**
  * @brief Read data from ring buffer.
  * @return True on success, False otherwise
@@ -419,3 +422,4 @@ static void esp_hdiffz_ota_handle_del(esp_hdiffz_ota_handle_t *h){
     if(h->complete) vSemaphoreDelete(h->complete);
     free(h);
 }
+#endif
