@@ -99,13 +99,5 @@ components/
     └── src/
 ```
 
-Using `make menuconfig` under `${IDF_PATH}/tools/unit-test-app`, modify the following parameters:
+Run the `flash-unit-test.sh` script from the `esp_hdiffz` directory.
 
-* Partition Table -> Custom partition CSV file -> "partition_table_unit_test_two_ota.csv"
-
-Flash the `unit-test-app` with this component as a target via:
-Finally, run the `flash-unit-test.sh` script.
-
-```
-make -C ${IDF_PATH}/tools/unit-test-app EXTRA_COMPONENT_DIRS=${COMPONENTS} TEST_COMPONENTS=esp_hdiffz flash monitor
-```
