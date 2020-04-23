@@ -2,7 +2,6 @@
 #define ESP_HDIFFZ_RW_H__ 
 
 #include "esp_system.h"
-#include "esp_flash_partitions.h"
 #include "esp_partition.h"
 
 #include "HPatch/patch.h"

@@ -1,12 +1,11 @@
 
-#define LOG_LOCAL_LEVEL 4
+//#define LOG_LOCAL_LEVEL 4
 
 #include "esp_log.h"
 #include "esp_hdiffz.h"
 #include "rw.h"
 
 #include "esp_system.h"
-#include "esp_flash_partitions.h"
 #include "miniz_plugin.h"
 #include "esp_ota_ops.h"
 #include "freertos/FreeRTOS.h"
