@@ -117,6 +117,7 @@ esp_err_t esp_hdiffz_ota_file_adv(FILE *diff, const esp_partition_t *src, const 
 
         if(!patch_decompress(&out_stream, &old_stream, &diff_stream, minizDecompressPlugin)){
             ESP_LOGE(TAG, "Failed to run patch_decompress");
+            err = ESP_FAIL;
             goto exit;
         }
     }
