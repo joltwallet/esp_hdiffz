@@ -25,6 +25,12 @@ extern "C" {
  * * All diff streams must be zlib compressed.
  */
 
+/**
+ * Value in range [0, 100]
+ * Progress percentage to consider the completion of dst partition erasing.
+ */
+#define ESP_HDIFFZ_FORMAT_PROGRESS 20
+
 /*********
  * FILES *
  *********/
@@ -67,6 +73,15 @@ esp_err_t esp_hdiffz_patch_file(FILE *in, FILE *out, FILE *diff);
  */
 esp_err_t esp_hdiffz_ota_file(FILE *diff);
 
+
+/**
+ * @brief esp_hdiffz_ota_file but will also update the progress value
+ * @param[in] diff hdiffpatch file to apply.
+ * @param[out] progress Progress in range [0, 100]. May be NULL.
+ * @return ESP_OK on success.
+ */
+esp_err_t esp_hdiffz_ota_file_progress(FILE *diff, int8_t *progress);
+
 /**
  * @brief esp_hdiffz_ota_file, but with more explicit parameters.
  * @param[in] diff hdiffpatch file to apply.
@@ -75,6 +90,17 @@ esp_err_t esp_hdiffz_ota_file(FILE *diff);
  * @return ESP_OK on success.
  */
 esp_err_t esp_hdiffz_ota_file_adv(FILE *diff, const esp_partition_t *src, const esp_partition_t *dst);
+
+/**
+ * @brief esp_hdiffz_ota_file, but will also update the progress value
+ * @param[in] diff hdiffpatch file to apply.
+ * @param[in] src partition to be apply patch from
+ * @param[in] dst partition to save the patched firmware
+ * @param[out] progress Progress in range [0, 100]. May be NULL.
+ * @return ESP_OK on success.
+ */
+esp_err_t esp_hdiffz_ota_file_adv_progress(FILE *diff, const esp_partition_t *src, const esp_partition_t *dst, int8_t *progress);
+
 
 /*******
  * OTA *

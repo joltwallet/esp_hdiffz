@@ -63,6 +63,10 @@ static void esp_hdiffz_ota_handle_del(esp_hdiffz_ota_handle_t *h);
  *********************/
 
 esp_err_t esp_hdiffz_ota_file(FILE *diff){
+    return esp_hdiffz_ota_file_progress(diff, NULL);
+}
+
+esp_err_t esp_hdiffz_ota_file_progress(FILE *diff, int8_t *progress){
     /******************
      * Get Partitions *
      ******************/
@@ -85,17 +89,37 @@ esp_err_t esp_hdiffz_ota_file(FILE *diff){
         assert(dst != NULL);
     }
 
-    return esp_hdiffz_ota_file_adv(diff, src, dst);
+    return esp_hdiffz_ota_file_adv_progress(diff, src, dst, progress);
 }
 
 esp_err_t esp_hdiffz_ota_file_adv(FILE *diff, const esp_partition_t *src, const esp_partition_t *dst){
+    return esp_hdiffz_ota_file_adv_progress(diff, src, dst, NULL);
+}
+
+esp_err_t esp_hdiffz_ota_file_adv_progress(FILE *diff, const esp_partition_t *src, const esp_partition_t *dst, int8_t *progress){
     esp_err_t err = ESP_FAIL;
 
+    if(progress) *progress = 0;
+
     // Wipe destination partition
-    err = esp_partition_erase_range(dst, 0, dst->size);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to wipe dst partition");
+    ESP_LOGI(TAG, "Wiping destination partition");
+#define PARTITION_STEP_SIZE (4096*32)
+    for(size_t start=0; start < dst->size; start += PARTITION_STEP_SIZE) {
+        size_t size = PARTITION_STEP_SIZE;
+        if(size > (dst->size - start)) size = dst->size - start;
+        err = esp_partition_erase_range(dst, start, size);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to wipe dst partition");
+            goto exit;
+        }
+        if(progress) {
+            *progress = (start * ESP_HDIFFZ_FORMAT_PROGRESS) / dst->size;
+        }
+        /* Allow some other tasks to do stuff */
+        taskYIELD();
     }
+#undef PARTITION_STEP_SIZE
+    ESP_LOGI(TAG, "Wiping destination complete");
 
     // Perform patch
     {
@@ -115,7 +139,7 @@ esp_err_t esp_hdiffz_ota_file_adv(FILE *diff, const esp_partition_t *src, const 
         diff_stream.streamSize = esp_hdiffz_get_file_size(diff);
         diff_stream.read = esp_hdiffz_file_read;
 
-        if(!patch_decompress(&out_stream, &old_stream, &diff_stream, minizDecompressPlugin)){
+        if(!patch_decompress_progress(&out_stream, &old_stream, &diff_stream, minizDecompressPlugin, progress)){
             ESP_LOGE(TAG, "Failed to run patch_decompress");
             err = ESP_FAIL;
             goto exit;
@@ -130,11 +154,10 @@ esp_err_t esp_hdiffz_ota_file_adv(FILE *diff, const esp_partition_t *src, const 
 
     ESP_LOGI(TAG, "OTA Complete. Please Reboot System");
 
-    return ESP_OK;
+    err = ESP_OK;
 
 exit:
     return err;
-
 }
 
 #if 0
